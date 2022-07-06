@@ -1,0 +1,20 @@
+.idea/
+confs.txt
+/src/jsonteste.py
+/src/*.checkpoint.ipynb
+__pycache__
+
+# Coverage
+.coverage
+**/.coverage
+Coverage
+junit.xml
+coverage.xml
+
+# Tox
+.tox
+
+.vscode
+
+trash
+.venv
