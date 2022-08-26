@@ -9,3 +9,21 @@ services:
       - ./src:/code/src
       - ./server.py:/code/server.py
     restart: on-failure
+    networks:
+      - serca
+
+  rabbitmq:
+    image: "rabbitmq:3.9-management-alpine"
+    hostname: "rabbit1"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+      - "8080:8080"
+    labels:
+      NAME: "rabbitmq1"
+    networks:
+      - serca
+
+networks:
+  serca:
+    external: true
