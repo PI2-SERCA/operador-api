@@ -4,7 +4,7 @@ services:
     container_name: operador-api
     build: .
     ports:
-      - "7000:5000"
+      - "5000:5000"
     volumes:
       - ./src:/code/src
       - ./server.py:/code/server.py
