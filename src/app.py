@@ -10,18 +10,23 @@ import functools
 
 import posix_ipc
 
+from src.util.data import filter_data
+
 
 state = []
 state_sem = Semaphore()
 
 
 def on_message_callback(socketio, ch, method, properties, body):
+    global state
     # decode json
     decoded = json.loads(body.decode("utf-8"))
-    # TODO parse object
     state_sem.acquire()
-    state.append(decoded)
+    state = state + decoded
     state_sem.release()
+
+    filtered = filter_data(decoded)
+    socketio.emit("append-cut", filtered, broadcast=True)
 
 
 def connect_thread(on_message):
@@ -35,22 +40,30 @@ def connect_thread(on_message):
 def create_app():
     app = Flask(__name__)
     socketio = SocketIO(app, cors_allowed_origins=ALLOWED_HOSTS)
-    cuts_mq = posix_ipc.MessageQueue("/cuts", posix_ipc.O_CREX)
+    cuts_mq = posix_ipc.MessageQueue("/cuts", posix_ipc.O_CREAT)
 
     on_message = functools.partial(on_message_callback, socketio)
 
     pika_thread = Thread(target=connect_thread, args=(on_message,), daemon=True)
     pika_thread.start()
 
+    # TODO notify when scribe ends
+
     @socketio.on("start-cut")
-    def start_cut(data):
-        print(data)
-        # TODO Fazer isso direito
-        cuts_mq.send(data.encode("utf-8"))
+    def start_cut():
+        global state
+
+        state_sem.acquire()
+        cut = state.pop(0)
+        state_sem.release()
+
+        cuts_mq.send(cut["gcode"].encode("utf-8"))
 
     @socketio.on("get-state")
-    def get_state(data):
+    def get_state():
         global state
-        socketio.emit("state", state)
+        filtered = filter_data(state)
+
+        socketio.emit("state", filtered)
 
     return app, socketio
