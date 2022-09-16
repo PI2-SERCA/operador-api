@@ -10,8 +10,10 @@ services:
       - ./src:/code/src
       - ./server.py:/code/server.py
     restart: on-failure
-    networks:
-      - serca
+    environment:
+      BROKER_URL: amqps://abluble
+    # networks:
+    #   - serca
 
   rabbitmq:
     image: "rabbitmq:3.9-management-alpine"

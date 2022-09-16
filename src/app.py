@@ -21,6 +21,9 @@ def on_message_callback(socketio, ch, method, properties, body):
     global state
     # decode json
     decoded = json.loads(body.decode("utf-8"))
+
+    print("Mensagem recebida")
+
     state_sem.acquire()
     state = state + decoded
     state_sem.release()
@@ -30,9 +33,11 @@ def on_message_callback(socketio, ch, method, properties, body):
 
 
 def connect_thread(on_message):
-    connection = pika.BlockingConnection(pika.URLParameters(BROKER_URL))
+    url_params = pika.URLParameters(BROKER_URL)
+    connection = pika.BlockingConnection(url_params)
     channel = connection.channel()
     channel.queue_declare(queue="cuts", durable=True)
+    print("Connected to queue: ", url_params.host)
     channel.basic_consume(queue="cuts", on_message_callback=on_message, auto_ack=True)
     channel.start_consuming()
 
