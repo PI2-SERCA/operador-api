@@ -17,6 +17,11 @@ state = []
 state_sem = Semaphore()
 
 
+def emit_state(socketio, state):
+    filtered = filter_data(state)
+    socketio.emit("state", filtered)
+
+
 def on_message_callback(socketio, ch, method, properties, body):
     global state
     # decode json
@@ -46,6 +51,7 @@ def create_app():
     app = Flask(__name__)
     socketio = SocketIO(app, cors_allowed_origins=ALLOWED_HOSTS)
     cuts_mq = posix_ipc.MessageQueue("/cuts", posix_ipc.O_CREAT)
+    ack_mq = posix_ipc.MessageQueue("/ack", posix_ipc.O_CREAT)
 
     on_message = functools.partial(on_message_callback, socketio)
 
@@ -59,16 +65,20 @@ def create_app():
         global state
 
         state_sem.acquire()
-        cut = state.pop(0)
+        # edit first item of queue decrease repetitions by 1, if 0 remove
+        cut = state[0]
+        cut["repetitions"] -= 1
+        if cut["repetitions"] == 0:
+            state = state[1:]
         state_sem.release()
 
         cuts_mq.send(cut["gcode"].encode("utf-8"))
+        ack_mq.receive()
+        emit_state(socketio, state)
 
     @socketio.on("get-state")
     def get_state():
         global state
-        filtered = filter_data(state)
-
-        socketio.emit("state", filtered)
+        emit_state(socketio, state)
 
     return app, socketio
